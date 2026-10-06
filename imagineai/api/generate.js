@@ -1,5 +1,5 @@
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_REQUESTS = 20;
+const MAX_REQUESTS = 12;
 const buckets = globalThis.__imageRateBuckets || (globalThis.__imageRateBuckets = new Map());
 
 function getIp(req) {
@@ -30,12 +30,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido.' });
   }
 
-  if (!process.env.POLLINATIONS_API_KEY) {
-    return res.status(500).json({
-      error: 'Falta configurar POLLINATIONS_API_KEY en Vercel.'
-    });
-  }
-
   if (!allowed(getIp(req))) {
     return res.status(429).json({
       error: 'Demasiadas generaciones seguidas. Prueba de nuevo más tarde.'
@@ -49,31 +43,32 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Escribe una descripción más completa.' });
     }
 
-    if (prompt.length > 2000) {
+    if (prompt.length > 1800) {
       return res.status(400).json({ error: 'El prompt es demasiado largo.' });
     }
 
     const { width, height } = dimensionsFromSize(size);
-    const url = new URL(
-      'https://gen.pollinations.ai/image/' + encodeURIComponent(prompt.trim())
-    );
+    const seed = Math.floor(Math.random() * 1000000000);
 
-    url.searchParams.set('model', 'black-forest-labs/flux.1-schnell');
+    const url = new URL(
+      'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt.trim())
+    );
+    url.searchParams.set('model', 'flux');
     url.searchParams.set('width', String(width));
     url.searchParams.set('height', String(height));
-    url.searchParams.set('seed', String(Math.floor(Math.random() * 1000000000)));
+    url.searchParams.set('seed', String(seed));
+    url.searchParams.set('nologo', 'true');
+    url.searchParams.set('private', 'true');
+    url.searchParams.set('enhance', 'true');
 
     const apiRes = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${process.env.POLLINATIONS_API_KEY}`,
-        Accept: 'image/*'
-      }
+      headers: { Accept: 'image/*' }
     });
 
     if (!apiRes.ok) {
       const message = await apiRes.text().catch(() => '');
       return res.status(apiRes.status).json({
-        error: message || 'Pollinations ha rechazado la solicitud.'
+        error: message || 'El generador gratuito ha rechazado la solicitud.'
       });
     }
 
