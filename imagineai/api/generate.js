@@ -3,60 +3,91 @@ const MAX_REQUESTS = 20;
 const buckets = globalThis.__imageRateBuckets || (globalThis.__imageRateBuckets = new Map());
 
 function getIp(req) {
-  return (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').toString().split(',')[0].trim();
+  return (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown')
+    .toString().split(',')[0].trim();
 }
+
 function allowed(ip) {
   const now = Date.now();
   const item = buckets.get(ip) || { start: now, count: 0 };
-  if (now - item.start > WINDOW_MS) { item.start = now; item.count = 0; }
+  if (now - item.start > WINDOW_MS) {
+    item.start = now;
+    item.count = 0;
+  }
   item.count += 1;
   buckets.set(ip, item);
   return item.count <= MAX_REQUESTS;
 }
 
+function dimensionsFromSize(size) {
+  if (size === '1536x1024') return { width: 1536, height: 1024 };
+  if (size === '1024x1536') return { width: 1024, height: 1536 };
+  return { width: 1024, height: 1024 };
+}
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido.' });
-  if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: 'Falta configurar OPENAI_API_KEY en Vercel.' });
-  if (!allowed(getIp(req))) return res.status(429).json({ error: 'Demasiadas generaciones seguidas. Prueba de nuevo más tarde.' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido.' });
+  }
+
+  if (!process.env.POLLINATIONS_API_KEY) {
+    return res.status(500).json({
+      error: 'Falta configurar POLLINATIONS_API_KEY en Vercel.'
+    });
+  }
+
+  if (!allowed(getIp(req))) {
+    return res.status(429).json({
+      error: 'Demasiadas generaciones seguidas. Prueba de nuevo más tarde.'
+    });
+  }
 
   try {
-    const { prompt, size = '1024x1024', quality = 'medium' } = req.body || {};
+    const { prompt, size = '1024x1024' } = req.body || {};
+
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 3) {
       return res.status(400).json({ error: 'Escribe una descripción más completa.' });
     }
-    if (prompt.length > 2200) return res.status(400).json({ error: 'El prompt es demasiado largo.' });
 
-    const safeSizes = new Set(['1024x1024', '1536x1024', '1024x1536']);
-    const safeQualities = new Set(['low', 'medium', 'high']);
-
-    const apiRes = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-image-2.5-sunburst',
-        prompt: prompt.trim(),
-        size: safeSizes.has(size) ? size : '1024x1024',
-        quality: safeQualities.has(quality) ? quality : 'medium',
-        n: 1,
-        output_format: 'jpeg',
-        output_compression: 82
-      })
-    });
-
-    const data = await apiRes.json();
-    if (!apiRes.ok) {
-      const message = data?.error?.message || 'La API de imágenes ha rechazado la solicitud.';
-      return res.status(apiRes.status).json({ error: message });
+    if (prompt.length > 2000) {
+      return res.status(400).json({ error: 'El prompt es demasiado largo.' });
     }
 
-    const b64 = data?.data?.[0]?.b64_json;
-    if (!b64) return res.status(502).json({ error: 'La API no devolvió ninguna imagen.' });
-    return res.status(200).json({ image: `data:image/jpeg;base64,${b64}` });
+    const { width, height } = dimensionsFromSize(size);
+    const url = new URL(
+      'https://gen.pollinations.ai/image/' + encodeURIComponent(prompt.trim())
+    );
+
+    url.searchParams.set('model', 'black-forest-labs/flux.1-schnell');
+    url.searchParams.set('width', String(width));
+    url.searchParams.set('height', String(height));
+    url.searchParams.set('seed', String(Math.floor(Math.random() * 1000000000)));
+
+    const apiRes = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.POLLINATIONS_API_KEY}`,
+        Accept: 'image/*'
+      }
+    });
+
+    if (!apiRes.ok) {
+      const message = await apiRes.text().catch(() => '');
+      return res.status(apiRes.status).json({
+        error: message || 'Pollinations ha rechazado la solicitud.'
+      });
+    }
+
+    const contentType = apiRes.headers.get('content-type') || 'image/jpeg';
+    const buffer = Buffer.from(await apiRes.arrayBuffer());
+    const b64 = buffer.toString('base64');
+
+    return res.status(200).json({
+      image: `data:${contentType};base64,${b64}`
+    });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'Error interno generando la imagen.' });
+    return res.status(500).json({
+      error: 'Error interno generando la imagen.'
+    });
   }
 }
