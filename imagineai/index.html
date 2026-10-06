@@ -122,9 +122,16 @@ btn.onclick=async()=>{
   if(mode==='video'){
     const samples=[
       'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-      'https://www.w3schools.com/html/mov_bbb.mp4'
+      'https://www.w3schools.com/html/mov_bbb.mp4',
+      'https://media.w3.org/2010/05/sintel/trailer.mp4',
+      'https://media.w3.org/2010/05/bunny/trailer.mp4',
+      'https://media.w3.org/2010/05/video/movie_300.mp4'
     ];
-    const src=samples[Math.abs([...prompt].reduce((a,ch)=>a+ch.charCodeAt(0),0))%samples.length];
+    const last=Number(sessionStorage.getItem('lastDemoVideo')||'-1');
+    let next=Math.floor(Math.random()*samples.length);
+    if(samples.length>1 && next===last) next=(next+1)%samples.length;
+    sessionStorage.setItem('lastDemoVideo',String(next));
+    const src=samples[next];
     const aspect=$('#aspect').value;
     stage.style.aspectRatio=aspect.replace(':',' / ');
     stage.innerHTML='<div style="width:100%"><div style="padding:10px 12px;color:#cdd2df;font-size:12px;border-bottom:1px solid #262b39;background:#0f121a"><b>Prompt demo:</b> '+escapeHTML(prompt)+'</div><video controls autoplay muted loop playsinline></video></div>';
