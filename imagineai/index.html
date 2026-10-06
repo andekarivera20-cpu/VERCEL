@@ -24,12 +24,12 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">✦</div>ImagineAI</div>
-    <div class="badge">MODO DEMO · sin API</div>
+    <div class="badge">BETA GRATIS · Wan2.1</div>
   </div>
 
   <section class="hero">
     <h1>Escríbelo.<br>Conviértelo en vídeo.</h1>
-    <p>Prueba toda la experiencia sin pagar ni conectar APIs. En este modo el vídeo mostrado es de ejemplo; después conectaremos la IA real.</p>
+    <p>Genera vídeos reales a partir de tu texto usando Wan2.1. Esta beta gratuita puede tener cola o límites de uso.</p>
   </section>
 
   <div class="tabs">
@@ -46,7 +46,7 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
         <div class="row">
           <div>
             <label for="duration">Duración</label>
-            <select id="duration"><option value="5">5 segundos</option><option value="8">8 segundos</option><option value="10">10 segundos</option></select>
+            <select id="duration"><option value="5">≈ 5 segundos</option></select>
           </div>
           <div>
             <label for="aspect">Formato</label>
@@ -56,11 +56,11 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
         <div class="row">
           <div>
             <label for="model">Modelo</label>
-            <select id="model"><option value="wan">Wan</option><option value="veo">Veo</option><option value="seedance">Seedance</option></select>
+            <select id="model"><option value="wan">Wan 2.1 · Gratis</option></select>
           </div>
           <div>
             <label for="audio">Audio</label>
-            <select id="audio"><option value="false">Sin audio</option><option value="true">Con audio</option></select>
+            <select id="audio"><option value="false">Sin audio</option></select>
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
       </div>
 
       <button class="gen" id="generateBtn">🎬 Generar vídeo</button>
-      <div class="hint" id="hint">Modo demo: simulamos la generación para probar la aplicación completa.</div>
+      <div class="hint" id="hint">Beta gratuita: el vídeo se genera de verdad. Puede tardar varios minutos si hay cola.</div>
     </section>
 
     <section class="card results">
@@ -85,10 +85,12 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
     </section>
   </main>
 
-  <section class="card info"><b>Modo demo:</b> puedes probar prompts, duración, formato, modelos y el flujo de generación sin gastar dinero. El vídeo reproducido es una muestra y <b>todavía no corresponde al prompt</b>. Cuando nos guste la app conectaremos la generación real.</section>
+  <section class="card info"><b>Beta gratuita real:</b> el prompt se envía al generador público de Wan2.1. No usa tu clave de OpenAI ni Pollinations. Al ser un servicio público puede haber cola, límites temporales o caídas.</section>
 </div>
 
-<script>
+<script type="module">
+import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+
 const $=s=>document.querySelector(s);
 let mode='video';
 const stage=$('#stage'),btn=$('#generateBtn'),statusEl=$('#status'),actions=$('#actions');
@@ -100,54 +102,121 @@ function setMode(next){
   $('#videoOptions').classList.toggle('hidden',mode!=='video');
   $('#imageOptions').classList.toggle('hidden',mode!=='image');
   $('#promptLabel').textContent=mode==='video'?'Describe tu vídeo':'Describe tu imagen';
-  btn.textContent=mode==='video'?'🎬 Generar vídeo':'✦ Generar imagen';
-  $('#hint').textContent=mode==='video'?'La generación de vídeo puede tardar varios segundos o minutos según el modelo.':'Generación rápida de imagen.';
-  stage.innerHTML=mode==='video'?'<div class="empty"><div class="orb">🎬</div><b>Tu vídeo aparecerá aquí</b><div style="margin-top:7px;font-size:13px">Empieza con un clip corto de 5 segundos.</div></div>':'<div class="empty"><div class="orb">✦</div><b>Tu imagen aparecerá aquí</b></div>';
+  btn.textContent=mode==='video'?'🎬 Generar vídeo REAL':'✦ Generar imagen';
+  $('#hint').textContent=mode==='video'
+    ?'Gratis para probar · Wan2.1 público · puede haber cola de varios minutos.'
+    :'Generación de imagen de prueba.';
+  stage.style.aspectRatio='';
+  stage.innerHTML=mode==='video'
+    ?'<div class="empty"><div class="orb">🎬</div><b>Tu vídeo generado aparecerá aquí</b><div style="margin-top:7px;font-size:13px">Escribe una escena y pulsa Generar.</div></div>'
+    :'<div class="empty"><div class="orb">✦</div><b>Tu imagen aparecerá aquí</b></div>';
   actions.classList.add('hidden');actions.innerHTML='';statusEl.textContent='Listo para crear';
 }
 $('#videoTab').onclick=()=>setMode('video');
 $('#imageTab').onclick=()=>setMode('image');
 
-function escapeHTML(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function escapeHTML(s){
+  return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+}
+function resolutionFromAspect(v){
+  if(v==='9:16') return '720*1280';
+  if(v==='1:1') return '960*960';
+  return '1280*720';
+}
+function extractVideoUrl(value){
+  if(!value) return null;
+  if(typeof value==='string' && /^https?:\/\//.test(value)) return value;
+  if(Array.isArray(value)){
+    for(const x of value){ const u=extractVideoUrl(x); if(u) return u; }
+    return null;
+  }
+  if(typeof value==='object'){
+    if(typeof value.url==='string') return value.url;
+    if(typeof value.path==='string' && /^https?:\/\//.test(value.path)) return value.path;
+    if(value.video) return extractVideoUrl(value.video);
+  }
+  return null;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function generateRealVideo(prompt){
+  statusEl.textContent='Conectando con Wan2.1…';
+  const app=await Client.connect("Wan-AI/Wan2.1");
+
+  const resolution=resolutionFromAspect($('#aspect').value);
+  statusEl.textContent='Enviando generación…';
+  const job=app.submit("/t2v_generation_async",[
+    prompt,
+    resolution,
+    false,
+    -1
+  ]);
+
+  const queued=await job.result();
+  const data=queued?.data || queued;
+  const taskId=Array.isArray(data) ? data[0] : null;
+  if(!taskId || typeof taskId!=='string'){
+    throw new Error('Wan2.1 no ha podido iniciar la generación. Prueba otra vez en un momento.');
+  }
+
+  const initialWait=Array.isArray(data) ? Number(data[5]) : 0;
+  let elapsed=0;
+  const maxMs=9*60*1000;
+  const pollMs=8000;
+
+  while(elapsed<maxMs){
+    const mins=Math.floor(elapsed/60000);
+    const secs=Math.floor((elapsed%60000)/1000);
+    const time=mins?mins+'m '+secs+'s':secs+'s';
+    statusEl.textContent=(initialWait>0 && elapsed<15000)
+      ?'En cola · espera estimada '+Math.max(1,Math.round(initialWait))+' s'
+      :'Generando… '+time;
+
+    await sleep(pollMs);
+    elapsed+=pollMs;
+
+    const poll=await app.predict("/status_refresh",[taskId,"t2v",false]);
+    const p=poll?.data || poll;
+    const videoUrl=extractVideoUrl(Array.isArray(p)?p[0]:p);
+    if(videoUrl) return videoUrl;
+  }
+  throw new Error('La generación está tardando demasiado. El servicio gratuito puede estar saturado; prueba de nuevo más tarde.');
+}
 
 btn.onclick=async()=>{
   const prompt=$('#prompt').value.trim();
   if(!prompt){$('#prompt').focus();return;}
   btn.disabled=true;actions.classList.add('hidden');actions.innerHTML='';
-  stage.innerHTML='<div class="empty"><div class="loader" style="margin:0 auto 16px"></div><b>Preparando tu '+(mode==='video'?'vídeo':'imagen')+'…</b><div style="margin-top:8px;font-size:13px">Modo demo · sin consumir créditos</div></div>';
-  statusEl.textContent=mode==='video'?'Generando demo…':'Generando demo…';
-
-  await new Promise(r=>setTimeout(r,2200));
-
-  if(mode==='video'){
-    const samples=[
-      'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-      'https://www.w3schools.com/html/mov_bbb.mp4',
-      'https://media.w3.org/2010/05/sintel/trailer.mp4',
-      'https://media.w3.org/2010/05/bunny/trailer.mp4',
-      'https://media.w3.org/2010/05/video/movie_300.mp4'
-    ];
-    const last=Number(sessionStorage.getItem('lastDemoVideo')||'-1');
-    let next=Math.floor(Math.random()*samples.length);
-    if(samples.length>1 && next===last) next=(next+1)%samples.length;
-    sessionStorage.setItem('lastDemoVideo',String(next));
-    const src=samples[next];
-    const aspect=$('#aspect').value;
-    stage.style.aspectRatio=aspect.replace(':',' / ');
-    stage.innerHTML='<div style="width:100%"><div style="padding:10px 12px;color:#cdd2df;font-size:12px;border-bottom:1px solid #262b39;background:#0f121a"><b>Prompt demo:</b> '+escapeHTML(prompt)+'</div><video controls autoplay muted loop playsinline></video></div>';
-    const v=stage.querySelector('video');v.src=src;
-    actions.innerHTML='<a class="btn" href="'+src+'" target="_blank" rel="noopener">↗ Abrir vídeo de muestra</a><button class="btn" id="againBtn">↻ Generar otra demo</button>';
-    $('#againBtn').onclick=()=>btn.click();
-    actions.classList.remove('hidden');
-    statusEl.textContent='Demo generada · todavía no es IA real';
-  }else{
-    const seed=encodeURIComponent(prompt.slice(0,40));
-    const src='https://picsum.photos/seed/'+seed+'/1024/1024';
-    stage.style.aspectRatio='1 / 1';
-    stage.innerHTML='<div style="width:100%"><div style="padding:10px 12px;color:#cdd2df;font-size:12px;border-bottom:1px solid #262b39;background:#0f121a"><b>Prompt demo:</b> '+escapeHTML(prompt)+'</div><img alt="Imagen de muestra" style="width:100%;display:block;object-fit:cover" src="'+src+'"></div>';
-    statusEl.textContent='Demo generada · imagen de muestra';
+  stage.innerHTML='<div class="empty"><div class="loader" style="margin:0 auto 16px"></div><b>Generando con IA…</b><div style="margin-top:8px;font-size:13px">No cierres esta pestaña. El servicio gratuito puede tener cola.</div></div>';
+  try{
+    if(mode==='video'){
+      const videoUrl=await generateRealVideo(prompt);
+      stage.style.aspectRatio=$('#aspect').value.replace(':',' / ');
+      stage.innerHTML='<video controls autoplay playsinline></video>';
+      stage.querySelector('video').src=videoUrl;
+      actions.innerHTML='<a class="btn" id="downloadVideo" target="_blank" rel="noopener">↓ Abrir / descargar MP4</a><button class="btn" id="againBtn">↻ Generar otro</button>';
+      $('#downloadVideo').href=videoUrl;
+      $('#againBtn').onclick=()=>btn.click();
+      actions.classList.remove('hidden');
+      statusEl.textContent='Vídeo generado ✓';
+    }else{
+      const size=$('#imageAspect').value==='landscape'?'1536x1024':$('#imageAspect').value==='portrait'?'1024x1536':'1024x1024';
+      const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,size})});
+      const data=await r.json();
+      if(!r.ok) throw new Error(data.error||'No se pudo generar la imagen.');
+      stage.style.aspectRatio='';
+      stage.innerHTML='<img alt="Imagen generada" style="width:100%;display:block;object-fit:contain">';
+      stage.querySelector('img').src=data.image;
+      statusEl.textContent='Imagen generada ✓';
+    }
+  }catch(e){
+    console.error(e);
+    stage.style.aspectRatio='';
+    stage.innerHTML='<div class="error"><b>No se ha podido generar.</b><br><br>'+escapeHTML(e.message||'Error del servicio gratuito.')+'<br><br><span style="color:#c8ccda">Al ser una beta gratuita, a veces el servidor público está lleno. Puedes volver a intentarlo.</span></div>';
+    statusEl.textContent='Servicio gratuito ocupado';
+  }finally{
+    btn.disabled=false;
   }
-  btn.disabled=false;
 };
 </script>
 </body>
