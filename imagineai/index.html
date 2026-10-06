@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Generador de imágenes con inteligencia artificial." />
+  <title>ImagineAI — Generador de imágenes</title>
+  <style>
+    :root {
+      --bg:#090a10; --panel:#11131c; --panel2:#161925; --text:#f6f7fb; --muted:#9aa0b2;
+      --line:#262a38; --accent:#8b5cf6; --accent2:#3b82f6; --ok:#22c55e; --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:
+      radial-gradient(900px 550px at 10% -10%,rgba(139,92,246,.22),transparent 55%),
+      radial-gradient(700px 450px at 95% 0%,rgba(59,130,246,.16),transparent 50%),var(--bg);color:var(--text);min-height:100vh}
+    button,input,textarea,select{font:inherit}
+    .wrap{max-width:1180px;margin:auto;padding:24px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:8px 0 28px}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:21px;letter-spacing:-.4px}
+    .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;box-shadow:0 8px 28px rgba(139,92,246,.28)}
+    .pill{border:1px solid var(--line);background:rgba(17,19,28,.72);padding:8px 12px;border-radius:999px;color:var(--muted);font-size:13px}
+    .hero{text-align:center;padding:22px 0 34px}
+    h1{font-size:clamp(38px,7vw,72px);line-height:.98;letter-spacing:-3px;margin:0 0 16px;background:linear-gradient(100deg,#fff,#c5b8ff 52%,#7fc5ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .hero p{margin:0 auto;color:var(--muted);font-size:17px;max-width:650px;line-height:1.65}
+    .grid{display:grid;grid-template-columns:390px 1fr;gap:18px;align-items:start}
+    .card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(22,25,37,.92),rgba(14,16,24,.94));border-radius:22px;box-shadow:0 16px 60px rgba(0,0,0,.24)}
+    .controls{padding:20px;position:sticky;top:16px}
+    label{display:block;color:#cfd3df;font-size:13px;font-weight:650;margin:0 0 8px}
+    textarea{width:100%;min-height:128px;resize:vertical;border:1px solid var(--line);background:#0d0f17;color:var(--text);padding:14px 14px 40px;border-radius:14px;outline:none;line-height:1.5}
+    textarea:focus,select:focus,input:focus{border-color:#6d5bd0;box-shadow:0 0 0 3px rgba(139,92,246,.11)}
+    .promptbox{position:relative}
+    .random{position:absolute;right:8px;bottom:8px;border:1px solid var(--line);color:#c9cddd;background:#171a24;border-radius:9px;padding:6px 9px;cursor:pointer;font-size:12px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+    select,input{width:100%;border:1px solid var(--line);background:#0d0f17;color:var(--text);padding:11px 12px;border-radius:12px;outline:none}
+    .generate{width:100%;border:0;background:linear-gradient(100deg,var(--accent),var(--accent2));color:white;padding:14px;border-radius:13px;font-weight:800;cursor:pointer;margin-top:16px;box-shadow:0 10px 26px rgba(99,102,241,.24);transition:.16s transform,.16s opacity}
+    .generate:hover{transform:translateY(-1px)} .generate:disabled{opacity:.55;cursor:not-allowed;transform:none}
+    .hint{font-size:12px;color:#7f8598;margin-top:10px;text-align:center}
+    .results{padding:18px;min-height:470px}
+    .results-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    h2{font-size:16px;margin:0}.status{font-size:12px;color:var(--muted)}
+    .gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .image-card{position:relative;overflow:hidden;border:1px solid var(--line);background:#0c0e15;border-radius:16px;min-height:250px;display:grid;place-items:center}
+    .image-card img{width:100%;height:100%;display:block;object-fit:cover}
+    .image-actions{position:absolute;right:9px;bottom:9px;display:flex;gap:7px;opacity:0;transform:translateY(4px);transition:.18s}
+    .image-card:hover .image-actions{opacity:1;transform:none}
+    .iconbtn{border:1px solid rgba(255,255,255,.18);background:rgba(8,9,14,.78);backdrop-filter:blur(10px);color:white;padding:8px 10px;border-radius:10px;cursor:pointer}
+    .empty{grid-column:1/-1;min-height:430px;display:grid;place-items:center;text-align:center;color:var(--muted);padding:30px}
+    .empty .orb{width:92px;height:92px;border-radius:30px;margin:0 auto 16px;background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(59,130,246,.2));border:1px solid var(--line);display:grid;place-items:center;font-size:38px}
+    .loader{width:28px;height:28px;border:3px solid #292d3a;border-top-color:#9d7bff;border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .error{grid-column:1/-1;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#fecaca;padding:14px;border-radius:13px;font-size:13px;line-height:1.5}
+    .history{margin-top:18px;padding:18px}
+    .history-list{display:flex;gap:10px;overflow:auto;padding-top:12px}
+    .history-item{min-width:190px;border:1px solid var(--line);background:#0d0f17;border-radius:13px;padding:11px;cursor:pointer}
+    .history-item strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.history-item span{font-size:11px;color:var(--muted)}
+    footer{text-align:center;color:#666d80;padding:24px 0 10px;font-size:12px}
+    @media(max-width:860px){.grid{grid-template-columns:1fr}.controls{position:static}.gallery{grid-template-columns:1fr}.wrap{padding:15px}h1{letter-spacing:-2px}.hero{padding-top:10px}.results{min-height:380px}.empty{min-height:330px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="logo">✦</div> ImagineAI</div>
+    <div class="pill">Generador de imágenes IA</div>
+  </header>
+
+  <section class="hero">
+    <h1>Imagina. Escríbelo.<br>Créalo.</h1>
+    <p>Convierte cualquier idea en una imagen. Describe lo que quieres, elige un estilo y deja que la IA haga el resto.</p>
+  </section>
+
+  <main class="grid">
+    <section class="card controls">
+      <label for="prompt">Describe tu imagen</label>
+      <div class="promptbox">
+        <textarea id="prompt" maxlength="1800" placeholder="Ej.: Un astronauta caminando por Bilbao de noche, lluvia, luces de neón, estilo cinematográfico..."></textarea>
+        <button class="random" id="randomBtn" type="button">🎲 Idea</button>
+      </div>
+      <div class="row">
+        <div><label for="style">Estilo</label><select id="style"><option value="realistic">📷 Realista</option><option value="cinematic">🎬 Cinematográfico</option><option value="3d">🧊 3D</option><option value="anime">🌸 Anime</option><option value="illustration">🎨 Ilustración</option><option value="pixel">👾 Pixel art</option></select></div>
+        <div><label for="ratio">Formato</label><select id="ratio"><option value="square">1:1 · Cuadrado</option><option value="landscape">16:9 · Horizontal</option><option value="portrait">9:16 · Vertical</option></select></div>
+      </div>
+      <div class="row">
+        <div><label for="quality">Calidad</label><select id="quality"><option value="low">Rápida</option><option value="medium" selected>Buena</option><option value="high">Máxima</option></select></div>
+        <div><label for="count">Imágenes</label><select id="count"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+      </div>
+      <button id="generateBtn" class="generate">✦ Generar imágenes</button>
+      <div class="hint">Cada imagen utiliza la API configurada en el servidor.</div>
+    </section>
+
+    <section class="card results">
+      <div class="results-head"><h2>Resultados</h2><span id="status" class="status">Listo para crear</span></div>
+      <div id="gallery" class="gallery">
+        <div class="empty"><div><div class="orb">✦</div><b>Tus imágenes aparecerán aquí</b><div style="margin-top:7px;font-size:13px">Prueba una idea loca. Cuanto más detalles des, mejor.</div></div></div>
+      </div>
+    </section>
+  </main>
+
+  <section class="card history">
+    <div class="results-head"><h2>Historial reciente</h2><button id="clearHistory" class="iconbtn" type="button">Limpiar</button></div>
+    <div id="history" class="history-list"><span class="status">Todavía no has generado nada.</span></div>
+  </section>
+  <footer>ImagineAI · Demo preparada para GitHub + Vercel</footer>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const promptEl = $('#prompt'), gallery = $('#gallery'), statusEl = $('#status'), btn = $('#generateBtn');
+const ideas = [
+  'Una ciudad construida sobre enormes nubes al atardecer, puentes de cristal, luz cinematográfica',
+  'Un samurái futurista bajo la lluvia en Tokio, reflejos de neón, fotografía nocturna',
+  'Una pequeña casa islandesa frente a una aurora boreal gigantesca, nieve, estrellas, hiperrealista',
+  'Un Ferrari rojo aparcado frente a una villa italiana junto al mar, verano, fotografía editorial',
+  'Un dragón blanco volando entre montañas heladas, escala épica, niebla y luz dramática'
+];
+const styleText = {
+  realistic:'Fotografía hiperrealista, iluminación natural, texturas detalladas, aspecto profesional.',
+  cinematic:'Estilo cinematográfico, iluminación dramática, composición de película, gran profundidad y detalle.',
+  '3d':'Render 3D de alta calidad, iluminación global, materiales detallados, acabado moderno.',
+  anime:'Ilustración anime de alta calidad, expresiva, detallada, composición dinámica.',
+  illustration:'Ilustración digital editorial, composición cuidada, formas limpias y gran detalle.',
+  pixel:'Pixel art detallado, estética de videojuego retro moderna, iluminación y composición cuidadas.'
+};
+function sizeFromRatio(v){ return v==='landscape'?'1536x1024':v==='portrait'?'1024x1536':'1024x1024'; }
+function escapeHTML(s){return s.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function downloadData(dataUrl, i){ const a=document.createElement('a');a.href=dataUrl;a.download=`imagineai-${Date.now()}-${i+1}.jpg`;document.body.appendChild(a);a.click();a.remove(); }
+function addImage(dataUrl,i){
+  const card=document.createElement('div');card.className='image-card';
+  card.innerHTML=`<img alt="Imagen generada por IA"><div class="image-actions"><button class="iconbtn">↓ Descargar</button></div>`;
+  card.querySelector('img').src=dataUrl; card.querySelector('button').onclick=()=>downloadData(dataUrl,i); gallery.appendChild(card);
+}
+function setLoadingSlots(n){ gallery.innerHTML=''; for(let i=0;i<n;i++){const d=document.createElement('div');d.className='image-card';d.dataset.slot=i;d.innerHTML='<div class="loader"></div>';gallery.appendChild(d);} }
+function replaceSlot(i,dataUrl){const slot=gallery.querySelector(`[data-slot="${i}"]`);if(!slot)return;const card=document.createElement('div');card.className='image-card';card.innerHTML='<img alt="Imagen generada por IA"><div class="image-actions"><button class="iconbtn">↓ Descargar</button></div>';card.querySelector('img').src=dataUrl;card.querySelector('button').onclick=()=>downloadData(dataUrl,i);slot.replaceWith(card);}
+function failSlot(i,msg){const slot=gallery.querySelector(`[data-slot="${i}"]`);if(slot){slot.outerHTML=`<div class="error">${escapeHTML(msg)}</div>`;}}
+function saveHistory(prompt,style,count){let h=JSON.parse(localStorage.getItem('imagineHistory')||'[]');h.unshift({prompt,style,count,at:Date.now()});h=h.slice(0,8);localStorage.setItem('imagineHistory',JSON.stringify(h));renderHistory();}
+function renderHistory(){const h=JSON.parse(localStorage.getItem('imagineHistory')||'[]');const box=$('#history');if(!h.length){box.innerHTML='<span class="status">Todavía no has generado nada.</span>';return;}box.innerHTML='';h.forEach(x=>{const d=document.createElement('div');d.className='history-item';d.innerHTML=`<strong>${escapeHTML(x.prompt)}</strong><span>${escapeHTML(x.style)} · ${x.count} img.</span>`;d.onclick=()=>{promptEl.value=x.prompt;window.scrollTo({top:0,behavior:'smooth'});};box.appendChild(d);});}
+$('#randomBtn').onclick=()=>{promptEl.value=ideas[Math.floor(Math.random()*ideas.length)];promptEl.focus();};
+$('#clearHistory').onclick=()=>{localStorage.removeItem('imagineHistory');renderHistory();};
+btn.onclick=async()=>{
+  const prompt=promptEl.value.trim();if(!prompt){promptEl.focus();return;}
+  const count=Number($('#count').value), style=$('#style').value, quality=$('#quality').value, size=sizeFromRatio($('#ratio').value);
+  setLoadingSlots(count);btn.disabled=true;statusEl.textContent=`Generando 0/${count}…`;
+  let ok=0;
+  for(let i=0;i<count;i++){
+    try{
+      const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:`${prompt}\n\nDirección visual: ${styleText[style]}`,size,quality})});
+      const data=await r.json(); if(!r.ok) throw new Error(data.error||'No se pudo generar la imagen.');
+      replaceSlot(i,data.image);ok++;statusEl.textContent=`Generando ${ok}/${count}…`;
+    }catch(e){ failSlot(i,e.message||'Error generando la imagen.'); }
+  }
+  btn.disabled=false;statusEl.textContent=ok?`${ok} imagen${ok===1?'':'es'} generada${ok===1?'':'s'}`:'Ha ocurrido un error';
+  if(ok) saveHistory(prompt,style,count);
+};
+renderHistory();
+</script>
+</body>
+</html>
