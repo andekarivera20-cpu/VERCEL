@@ -24,12 +24,12 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">✦</div>ImagineAI</div>
-    <div class="badge">Vídeo IA</div>
+    <div class="badge">MODO DEMO · sin API</div>
   </div>
 
   <section class="hero">
     <h1>Escríbelo.<br>Conviértelo en vídeo.</h1>
-    <p>Describe una escena y genera un clip con inteligencia artificial. Después añadiremos imagen → vídeo y referencias de personajes.</p>
+    <p>Prueba toda la experiencia sin pagar ni conectar APIs. En este modo el vídeo mostrado es de ejemplo; después conectaremos la IA real.</p>
   </section>
 
   <div class="tabs">
@@ -73,7 +73,7 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
       </div>
 
       <button class="gen" id="generateBtn">🎬 Generar vídeo</button>
-      <div class="hint" id="hint">La generación de vídeo puede tardar varios segundos o minutos según el modelo.</div>
+      <div class="hint" id="hint">Modo demo: simulamos la generación para probar la aplicación completa.</div>
     </section>
 
     <section class="card results">
@@ -85,7 +85,7 @@ video{display:block;width:100%;max-height:600px;background:#000}.actions{display
     </section>
   </main>
 
-  <section class="card info"><b>Objetivo:</b> primero texto → vídeo. Después podemos añadir <b>imagen → vídeo</b>, una imagen inicial/final, personajes de referencia y generación vertical para TikTok/Reels.</section>
+  <section class="card info"><b>Modo demo:</b> puedes probar prompts, duración, formato, modelos y el flujo de generación sin gastar dinero. El vídeo reproducido es una muestra y <b>todavía no corresponde al prompt</b>. Cuando nos guste la app conectaremos la generación real.</section>
 </div>
 
 <script>
@@ -114,30 +114,33 @@ btn.onclick=async()=>{
   const prompt=$('#prompt').value.trim();
   if(!prompt){$('#prompt').focus();return;}
   btn.disabled=true;actions.classList.add('hidden');actions.innerHTML='';
-  stage.innerHTML='<div class="loader"></div>';
-  statusEl.textContent=mode==='video'?'Generando vídeo…':'Generando imagen…';
-  try{
-    const endpoint=mode==='video'?'/api/generate-video':'/api/generate';
-    const payload=mode==='video'
-      ?{prompt,duration:Number($('#duration').value),aspectRatio:$('#aspect').value,model:$('#model').value,audio:$('#audio').value==='true'}
-      :{prompt,size:$('#imageAspect').value==='landscape'?'1536x1024':$('#imageAspect').value==='portrait'?'1024x1536':'1024x1024'};
-    const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.error||'No se pudo generar.');
-    if(mode==='video'){
-      stage.innerHTML='<video controls autoplay playsinline></video>';
-      const v=stage.querySelector('video');v.src=data.video;
-      actions.innerHTML='<a class="btn" id="downloadVideo">↓ Descargar MP4</a>';
-      const a=$('#downloadVideo');a.href=data.video;a.download='imagineai-video.mp4';
-      actions.classList.remove('hidden');statusEl.textContent='Vídeo generado';
-    }else{
-      stage.innerHTML='<img alt="Imagen generada" style="width:100%;height:100%;object-fit:contain;display:block">';
-      stage.querySelector('img').src=data.image;statusEl.textContent='Imagen generada';
-    }
-  }catch(e){
-    stage.innerHTML='<div class="error">'+escapeHTML(e.message||'Ha ocurrido un error.')+'</div>';
-    statusEl.textContent='Ha ocurrido un error';
-  }finally{btn.disabled=false;}
+  stage.innerHTML='<div class="empty"><div class="loader" style="margin:0 auto 16px"></div><b>Preparando tu '+(mode==='video'?'vídeo':'imagen')+'…</b><div style="margin-top:8px;font-size:13px">Modo demo · sin consumir créditos</div></div>';
+  statusEl.textContent=mode==='video'?'Generando demo…':'Generando demo…';
+
+  await new Promise(r=>setTimeout(r,2200));
+
+  if(mode==='video'){
+    const samples=[
+      'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+      'https://www.w3schools.com/html/mov_bbb.mp4'
+    ];
+    const src=samples[Math.abs([...prompt].reduce((a,ch)=>a+ch.charCodeAt(0),0))%samples.length];
+    const aspect=$('#aspect').value;
+    stage.style.aspectRatio=aspect.replace(':',' / ');
+    stage.innerHTML='<div style="width:100%"><div style="padding:10px 12px;color:#cdd2df;font-size:12px;border-bottom:1px solid #262b39;background:#0f121a"><b>Prompt demo:</b> '+escapeHTML(prompt)+'</div><video controls autoplay muted loop playsinline></video></div>';
+    const v=stage.querySelector('video');v.src=src;
+    actions.innerHTML='<a class="btn" href="'+src+'" target="_blank" rel="noopener">↗ Abrir vídeo de muestra</a><button class="btn" id="againBtn">↻ Generar otra demo</button>';
+    $('#againBtn').onclick=()=>btn.click();
+    actions.classList.remove('hidden');
+    statusEl.textContent='Demo generada · todavía no es IA real';
+  }else{
+    const seed=encodeURIComponent(prompt.slice(0,40));
+    const src='https://picsum.photos/seed/'+seed+'/1024/1024';
+    stage.style.aspectRatio='1 / 1';
+    stage.innerHTML='<div style="width:100%"><div style="padding:10px 12px;color:#cdd2df;font-size:12px;border-bottom:1px solid #262b39;background:#0f121a"><b>Prompt demo:</b> '+escapeHTML(prompt)+'</div><img alt="Imagen de muestra" style="width:100%;display:block;object-fit:cover" src="'+src+'"></div>';
+    statusEl.textContent='Demo generada · imagen de muestra';
+  }
+  btn.disabled=false;
 };
 </script>
 </body>
